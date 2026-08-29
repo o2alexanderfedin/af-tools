@@ -1,6 +1,6 @@
 ---
 name: five-whys
-description: Use when a bug, test failure, regression, crash, or surprising behaviour needs its root cause established rather than its symptom patched; when an earlier fix did not hold or the same class of failure keeps returning; or when an existing explanation - a README, an incident write-up, a design doc, a memory file, a prior session's conclusion - is about to be relied on as the cause.
+description: Root cause analysis by Toyota Five Whys, driven by rival agents - every link proved from code or a live experiment, the root cause proved by a flip test. Use when a bug, test failure, regression, crash, or surprising behaviour needs its root cause established rather than its symptom patched; when an earlier fix did not hold or the same class of failure keeps returning; or when an existing explanation - a README, an incident write-up, a design doc, a memory file, a prior session's conclusion - is about to be relied on as the cause.
 ---
 
 # Root Cause Analysis - Five Whys with Rival Agents
