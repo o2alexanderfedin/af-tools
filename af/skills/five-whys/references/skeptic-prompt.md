@@ -50,6 +50,9 @@ Take each link in turn and try to break it in one of these ways:
    the **whole** suite, not the reproducing test. A fix that makes the symptom
    vanish while breaking a neighbour, or while leaving the same class reachable by
    another input, is a defect wearing a passing test.
+7. **The system fix does not discriminate.** Take their SYSTEM FIX, put it in
+   place, then re-inject the cause. If it stays green, it is documentation, not a
+   check - and the chain's detection half is unproved. Paste both runs.
 
 **Your refutation is held to the same standard as the claim.** Every REFUTED or
 WEAK verdict carries its own EVIDENCE slot - `file:line` plus quoted code, or a
@@ -72,6 +75,8 @@ ROOT CAUSE VERDICT: SURVIVES | NOT THE ROOT | REFUTED
   EVIDENCE: ...
 
 FIX VERDICT: <applied it? full suite result, pasted> | not applied because <reason>
+SYSTEM FIX VERDICT: DISCRIMINATES | DOES NOT DISCRIMINATE | absent from their chain
+  EVIDENCE: <the check with the cause re-injected - pasted>
 RIVAL EXPLANATION: <the best competing cause you built, and the experiment that
                     separates it from theirs - with the outcome if you ran it> | none
 ```

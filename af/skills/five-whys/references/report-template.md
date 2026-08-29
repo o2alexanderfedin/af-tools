@@ -31,8 +31,15 @@ WHY-2: <claim>
 
 <the link whose removal makes the symptom CLASS impossible>
 
-WHY IT STOPS HERE: <what removing it makes impossible; why deeper is not actionable>
+WHY IT STOPS HERE: <what removing it makes impossible>
 SIBLING CASE: <different input, same class> -> <predicted> -> <observed>
+
+## Why nothing caught it
+
+<the detection descent's last link: the missing or lying check - a test that
+ cannot fail, a gate blind to this output, a measurement nobody takes>
+
+EVIDENCE: <what the suite/gate does and does not assert - grep or run, pasted>
 
 ## Rival chains
 
@@ -57,7 +64,10 @@ FLIP: PROVED | not flippable because <reason>
 
 ## Fix
 
-CHANGE: <the smallest change that removes the root cause>
+LOCAL FIX: <the smallest change that removes the root cause>
+SYSTEM FIX: <the check that would have gone RED before this shipped>
+  WITH CAUSE RE-INJECTED: <command> -> <output: the check FAILS>
+  WITH CAUSE REMOVED:     <command> -> <output: the check PASSES>
 FULL SUITE: <command> -> <pasted result>
 NOT FIXED HERE: <anything the chain surfaced and left open, with why>
 ```

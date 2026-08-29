@@ -62,14 +62,23 @@ a suspected cause, add a probe - that is how the WHAT IT WOULD BREAK slot gets
 filled with something other than a guess. Restore the workspace to the state your
 report describes before you return, and say which state that is.
 
-**How deep to go.** Keep descending while this is true:
+**How deep to go. Two descents, not one.**
+
+*Causal* - why is this so? Keep descending while this is true:
 
 > Removing this link would still leave the symptom CLASS possible.
 
-Stop at the first link whose removal makes the class impossible. Then name a
-SIBLING case - a different input of the same class - and state what your chain
-predicts for it. A chain that explains the reported case but not its sibling has
-not reached the root.
+Stop at the first link whose removal makes the class impossible.
+
+*Detection* - why did nothing CATCH it? This descent does not stop at the code.
+Keep asking until the answer names a missing or lying check: a test that cannot
+fail, a gate blind to this output, a measurement nobody takes. Prove it the same
+way as any other link - grep or run the suite and paste what it does and does not
+assert; mutate the cause and show the gate staying green.
+
+Then name a SIBLING case - a different input of the same class - and state what
+your chain predicts for it. A chain that explains the reported case but not its
+sibling has not reached the root.
 
 Five is a heuristic. Three well-evidenced links beat seven asserted ones.
 
@@ -88,7 +97,10 @@ ROOT CAUSE: <the link whose removal makes the symptom class impossible>
 WHY IT IS THE ROOT: <what stops here and why deeper is not actionable>
 SIBLING CASE: <different input, same class> -> <what the chain predicts, and whether you checked>
 
-PROPOSED FIX: <smallest change that removes the root cause>
+LOCAL FIX: <smallest change that removes the root cause>
+SYSTEM FIX: <the check that would have gone RED before this shipped, and goes red
+             again if the cause returns - a test, a gate, an assertion. Say how
+             you verified it goes red; "be more careful" is not a system fix>
 WHAT IT WOULD BREAK: <other consumers you checked, and how you checked>
 
 CONTRADICTED DOCS: <any doc/comment your evidence disproves, with file:line> | none
