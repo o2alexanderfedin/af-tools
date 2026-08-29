@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "af",
+  "description": "Alex Fedin's personal Claude Code toolkit: rigorous, evidence-first working methods",
+  "version": "0.1.0",
+  "author": {
+    "name": "Alex Fedin & AI Hive\u00ae",
+    "email": "af@O2.services",
+    "url": "https://O2.services"
+  },
+  "homepage": "https://github.com/o2alexanderfedin/af-tools",
+  "repository": "https://github.com/o2alexanderfedin/af-tools",
+  "license": "MIT",
+  "keywords": [
+    "root-cause",
+    "five-whys",
+    "rca",
+    "debugging",
+    "evidence",
+    "skills"
+  ]
+}

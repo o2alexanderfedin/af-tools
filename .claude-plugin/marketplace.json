@@ -1,0 +1,34 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "af-tools",
+  "metadata": {
+    "description": "Alex Fedin's personal Claude Code plugins",
+    "version": "0.1.0"
+  },
+  "owner": {
+    "name": "Alex Fedin & AI Hive\u00ae",
+    "email": "af@O2.services",
+    "url": "https://O2.services"
+  },
+  "plugins": [
+    {
+      "name": "af",
+      "source": "./af",
+      "description": "Alex Fedin's personal Claude Code toolkit: rigorous, evidence-first working methods",
+      "version": "0.1.0",
+      "category": "development",
+      "author": {
+        "name": "Alex Fedin & AI Hive\u00ae",
+        "email": "af@O2.services",
+        "url": "https://O2.services"
+      },
+      "tags": [
+        "root-cause",
+        "five-whys",
+        "rca",
+        "debugging",
+        "evidence"
+      ]
+    }
+  ]
+}

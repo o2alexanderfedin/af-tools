@@ -1,0 +1,8 @@
+{
+  "regions": { "ca": 0.10, "ny": 0.09, "tx": 0.0625 },
+  "catalog": {
+    "ca": ["widget-std", "widget-pro"],
+    "ny": ["widget-std"],
+    "tx": ["widget-std", "widget-lite"]
+  }
+}
