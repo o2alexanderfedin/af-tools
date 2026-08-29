@@ -12,10 +12,9 @@ marketplace:
 
 ## Contents
 
-- **`/af:five-whys`** — command; takes a symptom, an error message or a failing
-  test plus how to reproduce it.
-- **`af:root-cause-five-whys`** — skill; root cause analysis by Toyota Five Whys with rival
+- **`/af:five-whys`** — root cause analysis by Toyota Five Whys with rival
   agents, every link proved from code or a live experiment, the root cause
-  proved by a flip test.
+  proved by a flip test. Takes a symptom, an error message or a failing test,
+  plus how to reproduce it.
 
 See the repository README for the method and its evidence rules.

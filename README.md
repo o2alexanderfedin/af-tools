@@ -17,10 +17,9 @@ away in a listing crowded with third-party skills.
 
 | entry point | kind | what it does |
 |---|---|---|
-| `/af:five-whys` | command | run a root-cause analysis on a symptom you pass in |
-| `af:root-cause-five-whys` | skill | the method itself; also auto-invoked when a root cause is at stake |
+| `/af:five-whys` | skill | run a root-cause analysis on a symptom you pass in; also auto-invoked when a root cause is at stake |
 
-### `af:root-cause-five-whys`
+### `af:five-whys`
 
 Toyota Five Whys driven by rival agents. An investigator builds the chain; a
 skeptic is paid to destroy each link; the final link is proved by a flip test.
@@ -45,12 +44,16 @@ af-tools/
 ├── .claude-plugin/marketplace.json   ← this repo as a marketplace
 └── af/                               ← the plugin
     ├── .claude-plugin/plugin.json
-    ├── commands/five-whys.md         → /af:five-whys
-    └── skills/root-cause-five-whys/             → af:root-cause-five-whys
+    └── skills/five-whys/             → /af:five-whys
 ```
 
 Names inside the plugin carry **no** prefix — the plugin supplies it. Prefixing
-them again yields `af:af-five-whys`. Command and skill must not share a name either — no installed plugin does.
+them again yields `af:af-five-whys`.
+
+The `/` palette lists commands **and** skills together, so a thin command that
+only forwards to a skill shows up as a second, redundant entry for the same
+work. Ship the skill alone; add a command only when it does something the skill
+does not.
 
 ## Develop
 
