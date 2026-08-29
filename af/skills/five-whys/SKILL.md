@@ -134,6 +134,34 @@ A report carrying only the first is incomplete:
 "We will be more careful" is not a system fix. A system fix is executable.
 </the_fix_is_two_parts>
 
+<the_chain_is_a_diagram>
+A chain is a graph: two descents from one symptom, verdicts on the nodes, two
+fixes at the leaves. Prose flattens it and the reader reconstructs the shape by
+hand. **The report presents the chain as a mermaid `flowchart`, and the evidence
+as a list keyed to the node ids** - the diagram carries the SHAPE, the list
+carries the `file:line` quotes and pasted output that a diagram cannot hold.
+
+```mermaid
+flowchart TD
+    S["SYMPTOM"] -->|why?| W1["WHY-1"] -->|why?| RC["ROOT CAUSE"] --> LF["LOCAL FIX"]
+    S -.->|why did nothing catch it?| D1["WHY-D1"] -.-> MC["MISSING / LYING CHECK"] --> SF["SYSTEM FIX"]
+```
+
+Solid edges are the causal descent, dashed the detection descent. Node colour
+carries the rival verdict - green SURVIVES, amber WEAK, red REFUTED - and **a
+refuted node stays in the diagram**, red: deleting it hides what was tried, which
+is half the result.
+
+Node text is the CLAIM, never a label. A diagram whose nodes ("the parser", "the
+config") would fit any investigation is decoration, and decoration is what this
+skill exists to prevent.
+
+The same applies to the rival chains: draw A's root, B's root, the discriminating
+experiment and the arbitrated root. Converged chains draw two arrows into one
+node - do not delete the rival, and do not invent a disagreement to fill the
+picture.
+</the_chain_is_a_diagram>
+
 <flip_test>
 The final link is not established until the symptom has been made to appear and
 disappear on command:
@@ -183,11 +211,16 @@ Each of these means the chain is not finished:
   than an executable check
 - The brief named a suspect
 - Both investigators agree and neither cited a file:line
+- The chain is prose only, or the diagram's nodes are labels rather than claims
+- A refuted node was deleted from the diagram instead of coloured red
 - A fix was applied before the report existed
 </red_flags>
 
 <success_criteria>
-- Every link numbered, and every EVIDENCE slot filled with code or command output
+- The chain is drawn as a mermaid flowchart, both descents present, verdicts on
+  the nodes, refuted nodes kept
+- Every node appears in the evidence list with a slot filled by code or command
+  output
 - Both rival chains recorded, including the refuted links and what refuted them
 - Root cause identified by the depth rule, with the sibling case stated
 - Flip test executed and pasted, or explicitly declared not flippable with a reason

@@ -87,6 +87,20 @@ Five is a heuristic. Three well-evidenced links beat seven asserted ones.
 ```
 SYMPTOM: <one line>
 
+CHAIN DIAGRAM (mermaid - the shape; the evidence list below carries the proof):
+```mermaid
+flowchart TD
+    S["SYMPTOM<br/><one line>"]
+    W1["WHY-1<br/><claim>"]
+    RC["ROOT CAUSE<br/><claim>"]
+    D1["WHY NOTHING CAUGHT IT<br/><claim>"]
+    MC["MISSING / LYING CHECK<br/><claim>"]
+    S -->|why?| W1 -->|why?| RC
+    S -.->|why did nothing catch it?| D1 -.->|why?| MC
+```
+Node text is the CLAIM, not a label. Solid edges = causal descent, dashed =
+detection descent. Add as many nodes as your chain has links.
+
 WHY-1: <claim>
   EVIDENCE: <CODE file:line + quoted lines | EXPERIMENT command + output>
 WHY-2: <claim>

@@ -17,15 +17,56 @@ REPRODUCE: <command> (in <dir>)
 
 ## The chain
 
-WHY-1: <claim>
+```mermaid
+flowchart TD
+    S["SYMPTOM<br/><one line>"]
+
+    W1["WHY-1<br/><claim>"]
+    W2["WHY-2<br/><claim>"]
+    RC["ROOT CAUSE<br/><claim>"]
+
+    D1["WHY NOTHING CAUGHT IT<br/><claim>"]
+    D2["WHY-D2<br/><claim>"]
+    MC["MISSING / LYING CHECK<br/><claim>"]
+
+    LF["LOCAL FIX<br/><change>"]
+    SF["SYSTEM FIX<br/><the check that goes RED>"]
+
+    S -->|why?| W1 -->|why?| W2 -->|why?| RC
+    S -.->|why did nothing catch it?| D1 -.->|why?| D2 -.->|why?| MC
+    RC --> LF
+    MC --> SF
+
+    classDef survives fill:#d4edda,stroke:#3a3
+    classDef weak     fill:#fff3cd,stroke:#b90
+    classDef refuted  fill:#f8d7da,stroke:#a33
+    class W1,W2,RC,D1,D2,MC survives
+```
+
+**The diagram is the chain; the list below is its evidence.** Solid edges are the
+causal descent, dashed edges the detection descent. Node colour carries the rival
+verdict - green SURVIVES, amber WEAK, red REFUTED. **A refuted node stays in the
+diagram**, coloured red: deleting it hides what was tried, which is half the
+result.
+
+One node per link, and the node text is the claim - not a label like "the parser".
+A diagram whose nodes could belong to any investigation is decoration.
+
+### Evidence, keyed to the nodes
+
+W1: <claim>
   EVIDENCE: <CODE path:line + quoted lines | EXPERIMENT command + pasted output>
   RIVAL VERDICT: SURVIVES | WEAK | REFUTED - <what was tried against it>
 
-WHY-2: <claim>
+W2: <claim>
   EVIDENCE: ...
   RIVAL VERDICT: ...
 
-<... to the root>
+D1: <claim>
+  EVIDENCE: <what the suite/gate does and does not assert - grep or run, pasted>
+  RIVAL VERDICT: ...
+
+<... every node in the diagram appears here, including refuted ones>
 
 ## Root cause
 
@@ -43,10 +84,23 @@ EVIDENCE: <what the suite/gate does and does not assert - grep or run, pasted>
 
 ## Rival chains
 
-INVESTIGATOR A ROOT: <...>
-INVESTIGATOR B ROOT: <...>
+```mermaid
+flowchart LR
+    A["A ROOT<br/><claim>"]
+    B["B ROOT<br/><claim>"]
+    X{{"discriminating<br/>experiment"}}
+    V["ARBITRATED ROOT<br/><claim>"]
+
+    A --> X
+    B --> X
+    X -->|"<outcome>"| V
+```
+
 AGREEMENT: converged on the same root by independent evidence
          | diverged - resolved by: <the discriminating experiment and its output>
+
+When the two converged, say so and draw both arrows into the same node; do not
+delete the rival, and do not invent a disagreement to fill the diagram.
 
 ## Flip test
 
