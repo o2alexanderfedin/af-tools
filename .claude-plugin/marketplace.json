@@ -3,7 +3,7 @@
   "name": "af-tools",
   "metadata": {
     "description": "Alex Fedin's personal Claude Code plugins",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "owner": {
     "name": "Alex Fedin & AI Hive\u00ae",
@@ -14,8 +14,8 @@
     {
       "name": "af",
       "source": "./af",
-      "description": "Alex Fedin's personal Claude Code toolkit: rigorous, evidence-first working methods",
-      "version": "0.2.1",
+      "description": "Alex Fedin's personal Claude Code toolkit: rigorous, evidence-first working methods, PR and status-report workflows, plain English",
+      "version": "0.3.0",
       "category": "development",
       "author": {
         "name": "Alex Fedin & AI Hive\u00ae",
@@ -27,7 +27,10 @@
         "five-whys",
         "rca",
         "debugging",
-        "evidence"
+        "evidence",
+        "pull-requests",
+        "status-report",
+        "plain-english"
       ]
     }
   ]

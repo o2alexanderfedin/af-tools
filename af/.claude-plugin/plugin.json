@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "af",
-  "description": "Alex Fedin's personal Claude Code toolkit: rigorous, evidence-first working methods",
-  "version": "0.2.1",
+  "description": "Alex Fedin's personal Claude Code toolkit: rigorous, evidence-first working methods, PR and status-report workflows, plain English",
+  "version": "0.3.0",
   "author": {
     "name": "Alex Fedin & AI Hive\u00ae",
     "email": "af@O2.services",
@@ -17,6 +17,9 @@
     "rca",
     "debugging",
     "evidence",
-    "skills"
+    "skills",
+    "pull-requests",
+    "status-report",
+    "plain-english"
   ]
 }
