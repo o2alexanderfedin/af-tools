@@ -21,8 +21,9 @@ marketplace:
   merge the approved ones, triage review comments on the rest. Runs once,
   or as a recurring 2-hour job you start, check and stop.
 - **`/af:babysitting-others-prs`** — a recurring loop that reviews others'
-  open PRs on the current repo, each in its own worktree with the repo's
-  own tests, then approves or comments.
+  open PRs on the current repo or a named other repo, skips heads it already
+  reviewed, checks each in its own worktree with the repo's own tests, then
+  approves or comments.
 - **`/af:reporting-daily-status`** — a first-person standup report from your
   commits and PRs since the last work day, with the Jira tickets they
   reference and which of those have no time logged.
