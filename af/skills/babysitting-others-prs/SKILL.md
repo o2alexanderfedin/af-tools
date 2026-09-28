@@ -91,7 +91,7 @@ URL, or a local clone path), insert this paragraph as the first paragraph
 after the `---` line, filling in the path and URL, and leave the rest of the
 prompt verbatim:
 ```
-This check targets <owner/repo>, not the repository your worktree was made from. Before anything else, `cd <clone-path>`; if that directory is missing or `git rev-parse --git-dir` fails there, `git clone -q <clone-url> <clone-path>` first, then `cd` into it. From there, "the current repo" below means the one that clone's `origin` names.
+This check targets <owner/repo>, not the repository your worktree was made from. Before anything else, `cd <clone-path>`; if that directory is missing, or `git rev-parse --git-dir` fails there, or `git remote get-url origin` fails there, `git clone -q <clone-url> <clone-path>` first, then `cd` into it. From there, "the current repo" below means the one that clone's `origin` names.
 ```
 Use a clone path outside any session scratchpad if one exists (a `/tmp`
 clone is reaped by age and the fired job then has to re-clone every time);
