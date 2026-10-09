@@ -48,17 +48,21 @@ Do this entire task inside a subagent, not directly in this session: call the Ag
 
 Review every open PR on the current repo (resolve it from the current git remote / `gh repo view` — never assume a specific org/repo slug) EXCEPT my own — I cannot review my own work. Derive my login once, `ME=$(gh api user --jq .login)`, and filter by author EXCLUSION (`select(.author.login != $me)`), never by a named list of contributors: a new contributor's PR drops out of a named list silently, which is invisible in the output. Include drafts. Process one PR at a time, sequentially — do not run reviews in parallel.
 
-SKIP RULE, decided per PR from my own most recent review. Read the reviews API paginated and combined into ONE array — `gh api repos/OWNER/REPO/pulls/N/reviews --paginate --slurp | jq 'add | [.[] | select(.user.login == $me)] | last'` — and take the `<!-- reviewed-head: SHA -->` marker from that review's body. APPROVED and marker == current head: skip entirely, post nothing, do no verification. COMMENTED and marker == head: stay silent unless something material changed outside the diff (left draft, became or stopped being mergeable, CI flipped) — then post only that. Otherwise review the delta since the marker, or the whole PR when there is no marker, and post. Use the self-written marker only — the API's `commit_id` and timestamps are not reliable for this. If every PR is skipped, say so in one line and do nothing else.
+NEVER TOUCH A CLOSED PR. Take the open list from the live API at the moment you start, never from a list written down in this brief, in a handover note, or by an earlier pass: such a list goes stale in minutes. Read `state` and `merged_at` per PR and skip everything that is not open. A closed or merged PR gets nothing from you — no review, no comment, no verification, no marker.
+
+SKIP RULE, decided per PR from my own most recent MARKER. The marker can sit in a review body or in a plain issue comment, because minor notes go out through `gh pr comment` — read BOTH endpoints and merge them, or the rule finds no marker and re-reviews that PR from scratch on every pass. `gh api repos/OWNER/REPO/pulls/N/reviews --paginate --slurp | jq --arg me "$ME" 'add | [.[] | select(.user.login == $me)] | map({t: .submitted_at, state, body})'` and `gh api repos/OWNER/REPO/issues/N/comments --paginate --slurp | jq --arg me "$ME" 'add | [.[] | select(.user.login == $me)] | map({t: .created_at, state: "COMMENTED", body})'`. Take the newest entry of mine whose body holds a `<!-- reviewed-head: SHA -->` marker, and read the state from that same entry. On some `gh` builds `--slurp` is refused together with `--jq`, so pipe to standalone `jq` exactly as above. APPROVED and marker == current head: skip entirely, post nothing, do no verification. One exception: if the PR does not merge now, post only that. It does not matter whether it stopped merging since that review or the review missed it. COMMENTED and marker == head: stay silent unless something material changed outside the diff (left draft, became or stopped being mergeable, CI flipped) — then post only that. Otherwise review the delta since the marker, or the whole PR when there is no marker, and post. Use the self-written marker only — the API's `commit_id` and timestamps are not reliable for this. If every PR is skipped, say so in one line and do nothing else.
 
 REFRESH FIRST — never review a stale tree. `git fetch -q origin <default-branch>` and `git fetch -q --force origin pull/N/head:refs/pr/N`, then verify that `git rev-parse refs/pr/N` equals the head SHA the API reports; if it does not, re-read the live head with `gh api .../pulls/N --jq .head.sha` and fetch against that. Never use FETCH_HEAD. Never reference a bare local branch name such as `main` — use `origin/<branch>` or explicit SHAs. Build any per-PR worktree from the fetched SHA, never from a branch name.
 
-CHECK THE BASE BRANCH: read `baseRefName`. If the base is another PR's branch, review the delta over that branch's head, say in the review body which SHA the delta was measured against, and note that the PR cannot land before its base does. If the branch is far behind the default branch or `mergeable` is false, reproduce it (`/usr/bin/git merge-tree --write-tree <head> <default-branch-sha>` where that git has it) and say which files conflict rather than reviewing the drift. Before calling anything inconsistent or premature, check the OTHER open PRs for the same names — one change is often split across two PRs, and each half read alone looks like a defect in the other; report that as a coordination note naming both SHAs, never as a defect in either.
+CHECK THE BASE BRANCH: read `baseRefName`. If the base is another PR's branch, review the delta over that branch's head, say in the review body which SHA the delta was measured against, and note that the PR cannot land before its base does. If the branch is far behind the default branch or `mergeable` is false, reproduce it (`/usr/bin/git merge-tree --write-tree <head> <default-branch-sha>` where that git has it) and say which files conflict rather than reviewing the drift. If that comes back clean while the API says the branch does not merge, re-run it with `-c merge.renames=false`. GitHub's check does not follow renames. A file this PR renamed, and the default branch also edited, conflicts there but not locally. When the branch is behind the default branch, rebase it onto the latest default-branch SHA inside your own worktree and review the rebased result, so the review describes what will land rather than what the author last saw; say in the review body which SHA you rebased onto. If the rebase stops on a conflict, name the conflicting files, abort the rebase, and review the branch as it stands. Never push a rebase to the author's branch. Before calling anything inconsistent or premature, check the OTHER open PRs for the same names — one change is often split across two PRs, and each half read alone looks like a defect in the other; report that as a coordination note naming both SHAs, never as a defect in either.
 
-Verify by running, not by reading: the repo's own documented build/lint/test commands (its CLAUDE.md/AGENTS.md/CONTRIBUTING.md or CI config). A command that can fail to RUN needs its exit code asserted, not just its output grepped; an empty result is a claim — positive-control every negative. When a test suite is your evidence, say what you broke on purpose and which test caught it; a mutation that stays green is itself a finding. Where a document quotes the tree, confirm the quoted line still says that; where it names a file or API, confirm it exists; where it states a count, derive the count.
+Verify by running, not by reading: the repo's own documented build/lint/test commands (its CLAUDE.md/AGENTS.md/CONTRIBUTING.md or CI config). A command that can fail to RUN needs its exit code asserted, not just its output grepped; an empty result is a claim — positive-control every negative. When a test suite is your evidence, say what you broke on purpose and which test caught it; a mutation that stays green is itself a finding. Where a document quotes the tree, confirm the quoted line still says that; where it names a file or API, confirm it exists.
 
-DO NOT REPORT DEAD OR UNUSED CODE. No "this export has no consumer", no "nothing imports this file", no "this type/function/directory is unused", no "speculative API", no unused-import or `--noUnusedLocals` findings, no YAGNI objections to something that exists but is not yet called. Repos routinely land an API in one PR and its consumer in a later one, so absence of a consumer is the intended state, not a defect; if you catch yourself writing such a line, delete it. What remains reportable: code that is wrong; docs that misdescribe the tree (a quoted line that no longer says that, a named file or API that does not exist, a count that does not match); an identifier whose name contradicts its own type after a rename; a broken gate; a missing regeneration; and a missing breaking-change declaration on a published break.
+DO NOT REPORT DEAD OR UNUSED CODE. No "this export has no consumer", no "nothing imports this file", no "this type/function/directory is unused", no "speculative API", no unused-import or `--noUnusedLocals` findings, no YAGNI objections to something that exists but is not yet called. Repos routinely land an API in one PR and its consumer in a later one, so absence of a consumer is the intended state, not a defect; if you catch yourself writing such a line, delete it. What remains reportable: code that is wrong; docs that misdescribe the tree (a quoted line that no longer says that, a named file or API that does not exist); an identifier whose name contradicts its own type after a rename; a broken gate; a missing regeneration; and a missing breaking-change declaration on a published break.
 
-If everything is fine - approve with a simple "looks good to me" plus a short brief on what was checked during review; if there are problems - add comments. Write every review comment in plain English: open with one sentence stating exactly what is wrong, in terms the PR author can act on immediately — no jargon, no gotchas, no rhetorical framing, nothing the author has to decode or dig through. Every comment must be actionable — the author should be able to read it and know exactly what to change. Before you post any review body, comment or request-changes text, invoke the `af:writing-plainly` skill on your draft and post what it gives back. Be very reasonable. Be very brief and very focused, avoid AI slop at all costs. Always say what was NOT verified. Re-read the head SHA immediately before posting; if it moved, do not post against the old one — measure the delta first. End every review body with `<!-- reviewed-head: FULL_CURRENT_HEAD_SHA -->`. Never merge. You are already running inside an isolated worktree (the isolation: "worktree" Agent call that dispatched you) — do not create another nested worktree for the overall check, though you may still use `git worktree add` per-PR if you need to hold multiple PR branches checked out at once, and remove every worktree you create when done.
+DO NOT COUNT THINGS. Do not count tests, files, lines, examples, rows or cases to check a number that a document, a changelog or the PR body states. Do not report that such a number is out of date, and do not print a tally you derived only to confirm that a sentence is right. These numbers move with almost every commit, and the author knows it. The count also costs a full test run or a walk of the tree, and it buys nothing. If a stale count is the only problem you found, the PR is fine. This rule covers numbers written in prose. A wrong length, index or bound in the code is still code that is wrong, and you report that. This rule also outranks any instruction to re-check a number from an earlier review: if an earlier review of mine stated a count, leave it alone — do not re-measure it, and do not post a correction to it. Correct an earlier review only when it named a defect that is not there, or missed one that is.
+
+If everything is fine - approve with a simple "looks good to me" plus a short brief on what was checked during review; if there are problems - add comments. Write every review comment in plain English: open with one sentence stating exactly what is wrong, in terms the PR author can act on immediately — no jargon, no gotchas, no rhetorical framing, nothing the author has to decode or dig through. Every comment must be actionable — the author should be able to read it and know exactly what to change. Before you post any review body, comment or request-changes text, invoke the `af:writing-plainly` skill on your draft and post what it gives back. Be very reasonable. Be very brief and very focused, avoid AI slop at all costs. Always say what was NOT verified. Immediately before you post, re-read the PR's `state`, its `merged_at` and its head SHA in a command of their own, then post in a separate command. If it closed or merged while you were reading it, post nothing and say so. If only the head moved, do not post against the old one — measure the delta first. End every review body with `<!-- reviewed-head: FULL_CURRENT_HEAD_SHA -->`. Never merge. You are already running inside an isolated worktree (the isolation: "worktree" Agent call that dispatched you) — do not create another nested worktree for the overall check, though you may still use `git worktree add` per-PR if you need to hold multiple PR branches checked out at once, and remove every worktree you create when done.
 ```
 
 This clarity rule stems from a specific incident where a reviewer told the
@@ -85,13 +89,25 @@ unchanged head every hour; a named allowlist that silently dropped a new
 contributor's PRs; and an agent that reported a freshly landed type-level
 API as "unused" because its consumer was the next PR in the stack.
 
+The no-counting rule is a direct user instruction. A count that a document
+states drifts with every commit. A review that reports the drift spends a
+whole test run to tell the author something the author will not act on.
+
+The closed-PR rule has its own history. This queue moves faster than a review
+takes. Six PRs have merged before a pass reached them. One review went out five
+minutes after its PR had merged. Another PR merged one commit past the review
+just written for it. A stack of nine closed unmerged during a single pass. On
+2026-10-08 two merged PRs sat at the top of a start-here list, because the list
+came from a handover written four hours earlier. A list of PR numbers is never
+evidence that those PRs are open.
+
 ## Targeting another repo
 When the user names a repo other than the one the session is in (by slug,
 URL, or a local clone path), insert this paragraph as the first paragraph
 after the `---` line, filling in the path and URL, and leave the rest of the
 prompt verbatim:
 ```
-This check targets <owner/repo>, not the repository your worktree was made from. Before anything else, `cd <clone-path>`; if that directory is missing or `git rev-parse --git-dir` fails there, `git clone -q <clone-url> <clone-path>` first, then `cd` into it. From there, "the current repo" below means the one that clone's `origin` names.
+This check targets <owner/repo>, not the repository your worktree was made from. Before anything else, `cd <clone-path>`; if that directory is missing, or `git rev-parse --git-dir` fails there, or `git remote get-url origin` fails there, `git clone -q <clone-url> <clone-path>` first, then `cd` into it. From there, "the current repo" below means the one that clone's `origin` names.
 ```
 Use a clone path outside any session scratchpad if one exists (a `/tmp`
 clone is reaped by age and the fired job then has to re-clone every time);
@@ -118,10 +134,13 @@ the paragraph re-clones on demand.
 (Context for reporting what happened, or diagnosing a firing that went wrong —
 not something to re-derive each time; it is already encoded in the standing
 prompt above, which the fired task follows on its own.)
-- List open PRs on the repo not authored by the current user, drafts included.
-- For each, read the current user's most recent review through the paginated
-  reviews API and compare its `<!-- reviewed-head: SHA -->` marker with the
-  PR's current head. Same head and APPROVED: skip. Same head and COMMENTED:
+- List open PRs on the repo not authored by the current user, drafts included,
+  from the live API rather than from any list written down earlier. Skip every
+  PR that is not open: a closed or merged one gets nothing.
+- For each, find the current user's most recent `<!-- reviewed-head: SHA -->`
+  marker across BOTH the reviews API and the issue-comments API, and compare
+  it with the PR's current head. A marker written by `gh pr comment` is
+  invisible to the reviews API alone. Same head and APPROVED: skip. Same head and COMMENTED:
   post only if something material changed outside the diff. Otherwise review
   the delta since the marker. A bare `updatedAt` bump with no new commit is
   not new work; a head that moved only by merging the default branch is a
@@ -131,12 +150,14 @@ prompt above, which the fired task follows on its own.)
 - If the PR's base is another PR's branch, measure the delta over that base
   and say which SHA it was measured against. If the branch conflicts with
   the default branch, reproduce the conflict and name the files instead of
-  reviewing the drift.
+  reviewing the drift. If the branch is behind the default branch, rebase it
+  onto the latest default-branch SHA locally and review the rebased result,
+  naming that SHA; never push the rebase to the author's branch.
 - Run whatever this repo's own documented format/lint/test commands are
   before approving, asserting exit codes; for the change under review, break
   something on purpose and record which test caught it.
-- Never report dead or unused code; the reportable classes are listed in the
-  prompt.
+- Never report dead or unused code, and never count anything to check a
+  number a document states; the reportable classes are listed in the prompt.
 - Approve only with a short "looks good to me" plus a brief one-paragraph
   summary of what was checked (files touched, format/lint/test results).
   Use a plain `gh pr comment` for minor/cosmetic notes; use
@@ -152,8 +173,9 @@ prompt above, which the fired task follows on its own.)
   to change, not have to infer it.
 - Run every review body through the `af:writing-plainly` skill before
   posting it, and post what comes back.
-- Re-read the head SHA immediately before posting, and end the body with the
-  `reviewed-head` marker so the next firing can skip it.
+- Re-read the PR's `state`, `merged_at` and head SHA immediately before
+  posting, each in its own command, and post nothing if it closed meanwhile.
+  End the body with the `reviewed-head` marker so the next firing can skip it.
 - Never merge an approved PR — per standing policy, leave that for a second
   human reviewer other than the PR's own author to look at first.
 - Clean up every worktree (`git worktree remove --force`) and any branches
