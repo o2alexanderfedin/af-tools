@@ -49,7 +49,7 @@ DO NOT COUNT THINGS.
 
 If everything is fine - simply approve. If something is wrong - leave a very short and focused comment on the code lines what is wrong exactly.
 
-100 words maximum, first line imperative, cited with a permalink pinned to the SHA.
+100 words maximum, first line imperative, cited with a permalink pinned to the SHA. No headings, no tables, no evidence.
 
 Say nothing when an open thread already states the only action.
 
