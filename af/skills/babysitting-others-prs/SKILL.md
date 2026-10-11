@@ -62,7 +62,7 @@ DO NOT REPORT DEAD OR UNUSED CODE. No "this export has no consumer", no "nothing
 
 DO NOT COUNT THINGS. Do not count tests, files, lines, examples, rows or cases to check a number that a document, a changelog or the PR body states. Do not report that such a number is out of date, and do not print a tally you derived only to confirm that a sentence is right. These numbers move with almost every commit, and the author knows it. The count also costs a full test run or a walk of the tree, and it buys nothing. If a stale count is the only problem you found, the PR is fine. This rule covers numbers written in prose. A wrong length, index or bound in the code is still code that is wrong, and you report that. This rule also outranks any instruction to re-check a number from an earlier review: if an earlier review of mine stated a count, leave it alone — do not re-measure it, and do not post a correction to it. Correct an earlier review only when it named a defect that is not there, or missed one that is.
 
-If everything is fine - approve with a simple "looks good to me" plus a short brief on what was checked during review; if there are problems - add comments. Write every review comment in plain English: open with one sentence stating exactly what is wrong, in terms the PR author can act on immediately — no jargon, no gotchas, no rhetorical framing, nothing the author has to decode or dig through. Every comment must be actionable — the author should be able to read it and know exactly what to change. Before you post any review body, comment or request-changes text, invoke the `af:writing-plainly` skill on your draft and post what it gives back. Be very reasonable. Be very brief and very focused, avoid AI slop at all costs. Always say what was NOT verified. Immediately before you post, re-read the PR's `state`, its `merged_at` and its head SHA in a command of their own, then post in a separate command. If it closed or merged while you were reading it, post nothing and say so. If only the head moved, do not post against the old one — measure the delta first. End every review body with `<!-- reviewed-head: FULL_CURRENT_HEAD_SHA -->`. Never merge. You are already running inside an isolated worktree (the isolation: "worktree" Agent call that dispatched you) — do not create another nested worktree for the overall check, though you may still use `git worktree add` per-PR if you need to hold multiple PR branches checked out at once, and remove every worktree you create when done.
+If everything is fine, approve with one or two sentences and nothing else: no headings, no table, no account of what you checked, no list of what you did not verify. Your verification earns the approval; it is not content for the author. **A FINDING GOES INLINE ON THE FILE AND LINE, NOT IN THE TOP-LEVEL BODY.** Post it as a review comment through the pull request `comments` API, giving `path`, `line`, `side` and the head `commit_id`, and read the text from a file. An inline comment sits beside the code in the Files view and closes when the author fixes it; a top-level body never closes and the author re-reads it on every visit. Shape every finding the same way: the first line is the action in the imperative, ten words or fewer; then at most 100 words that say what is wrong, what it costs, and the rule or the measurement behind it; then stop. Cite a line as a permalink pinned to the SHA, `https://github.com/OWNER/REPO/blob/<SHA>/<path>#L<a>-L<b>`, and never as a retyped quote or a bare line number. A pinned link cannot be mis-cited; retyped quotes and remembered line numbers are the two defects this loop posts most. The top-level body carries at most two sentences, or none at all. Never add a reaction prompt such as "Useful? React with thumbs up or down" — the user calls that noise. If the only action you found is already stated in an open thread by anyone, including a bot, post no body: set your position and say in your summary that the thread already covers it. Be very reasonable. Be very brief. Avoid AI slop at all costs. Say what you did not verify in your summary to me, never in the posted body. Immediately before you post, re-read the PR's `state`, its `merged_at` and its head SHA in a command of their own, then post in a separate command. If it closed or merged while you were reading it, post nothing and say so. If only the head moved, do not post against the old one — measure the delta first. End every review body with `<!-- reviewed-head: FULL_CURRENT_HEAD_SHA -->`. Never merge. You are already running inside an isolated worktree (the isolation: "worktree" Agent call that dispatched you) — do not create another nested worktree for the overall check, though you may still use `git worktree add` per-PR if you need to hold multiple PR branches checked out at once, and remove every worktree you create when done.
 ```
 
 This clarity rule stems from a specific incident where a reviewer told the
@@ -73,6 +73,21 @@ loop posts: a `gh pr comment`/`--request-changes` body that opens with
 rationale, a comparison table, or repo history before stating the defect
 leaves the author unable to tell what to fix. Lead with the defect, every
 time.
+
+The length rule has its own measurement, taken on 2026-10-11 after the
+maintainer said he was unhappy with how this loop comments. Eighty-seven
+drafted bodies had a median of 621 words and a maximum of 1514. One review of
+a two-file Markdown change ran 321 words over four headings, and its whole
+conclusion was "agreeing to this needs no code change". A 644-word review of
+PR 2828 carried exactly one action — delete a stale `todo/` file — and a bot
+had already asked for the same deletion an hour earlier, in about 100 words,
+inline on the line, under a one-line imperative title, citing the rule with a
+permalink pinned to the SHA. That comparison is the model: the bot's finding
+was shorter, anchored where the author works, and impossible to mis-cite.
+Everything this loop adds past the action — gate exit codes, mutation logs,
+tables of measured behaviour, the list of what went unrun — is evidence for
+the position it takes, and the author did not ask for it. It goes in the
+summary to the user.
 
 There is also a standing rule, not tied to one incident: review comments must
 read as plain English — no jargon the author has to look up, no "gotcha"
@@ -158,19 +173,22 @@ prompt above, which the fired task follows on its own.)
   something on purpose and record which test caught it.
 - Never report dead or unused code, and never count anything to check a
   number a document states; the reportable classes are listed in the prompt.
-- Approve only with a short "looks good to me" plus a brief one-paragraph
-  summary of what was checked (files touched, format/lint/test results).
-  Use a plain `gh pr comment` for minor/cosmetic notes; use
-  `gh pr review --request-changes` only for real problems.
-- Every comment or request-changes body must open with one plain sentence
-  naming the actual defect — not a summary of what was checked, not
-  background on why the PR exists, not a table. Put supporting detail
-  (repro steps, file/line references, alternatives considered) after that
-  sentence, never before it.
+- Approve with one or two sentences and nothing else. No headings, no
+  table, no account of what was checked, no list of what was not verified.
+  Use `gh pr review --request-changes` only for a real problem.
+- Put every finding INLINE on its file and line, through the pull request
+  `comments` API with `path`, `line`, `side` and the head `commit_id`. An
+  inline comment closes when the author fixes it. A top-level body never
+  closes, so the author re-reads it on every visit.
+- Cap each finding at 100 words, with the first line the action in the
+  imperative, ten words or fewer. Cite a line as a permalink pinned to the
+  SHA, never as a retyped quote or a bare line number.
 - Write in plain English: no jargon the author has to look up, no "gotcha"
   framing, no clever or rhetorical phrasing. Every comment must be
   actionable — after reading it once, the author should know exactly what
   to change, not have to infer it.
+- Post nothing when the only action you found is already stated in an open
+  thread, including by a bot. Set the position and say so in the summary.
 - Run every review body through the `af:writing-plainly` skill before
   posting it, and post what comes back.
 - Re-read the PR's `state`, `merged_at` and head SHA immediately before
@@ -182,20 +200,30 @@ prompt above, which the fired task follows on its own.)
   created for the check when done.
 
 ## Example review output
-An approval should read like this — a short "Verdict" line up front, then a
-one-paragraph summary, then the marker. This is the shape to match, not
-fill-in-the-blank text:
+Two shapes, both measured against what the maintainer actually reads. An
+approval, posted as the whole body:
 ```
-Verdict
+Looks good to me. The new `conversion` proof does tell a `null` key from an
+`undefined` one: I changed the boxed key and `cov` exited 1 naming it.
 
-Approve. The fix is well-motivated, structurally correct, and backed by discriminating tests. The PR body is unusually thorough — the mark_complete() trap, actix-http None-only-on-EOF property, and TERM-01 scope decision are all accurate.
-
-Before merge: bring the branch up to date with develop (6 commits behind).
-
-Summary: Bugbot clean; manual review approves PR 480 — guarded H1 forwarder correctly distinguishes truncation from success, tests catch the main regression, WR-01 request-id fix is good; rebase onto develop before landing.
-
-<!-- reviewed-head: 4f2c9d1e8b7a6c5d4e3f2a1b0c9d8e7f6a5b4c3d -->
+<!-- reviewed-head: 718e5ff0f0b6b102117e9ffa19ac8e202498e5cd -->
 ```
+A finding, posted inline on `spec/todo/README.md` at the line that claims the
+issue is done:
+```
+Delete `fjs/compiler/todo/computed-property-key.md`.
+
+This branch makes `{ [a]: 5 }` compile, and that file still reads
+`**Status:** open` with every task unchecked. Two sources of truth now
+disagree, so the finished feature can be claimed again.
+[AGENTS.md L107-L112](https://github.com/OWNER/REPO/blob/718e5ff0/AGENTS.md#L107-L112)
+asks for the deletion.
+
+<!-- reviewed-head: 718e5ff0f0b6b102117e9ffa19ac8e202498e5cd -->
+```
+What neither contains: a "Gates" section, a table of measurements, a
+"What I did not do" section, or a reaction prompt. Those belong in the
+summary to the user, not on the pull request.
 
 ## Notes
 - Always dispatch the actual work to an isolated (`isolation: "worktree"`)
