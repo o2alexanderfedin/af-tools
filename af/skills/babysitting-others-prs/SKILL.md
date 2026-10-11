@@ -7,230 +7,150 @@ argument-hint: [start|status|stop] [repo-or-path]
 # Babysitting others' PRs
 
 ## Overview
-Maintains a session-only `CronCreate` job that periodically checks a repo for
-open PRs not authored by the current user and not yet reviewed at their
-current head, reviewing them one at a time in an isolated git worktree,
-running the repo's own tests/lint as needed, and approving or commenting per
-findings. `CronCreate` jobs are session-only and are lost whenever Claude
-Code restarts — this skill exists to re-arm the job quickly afterward, with
-the schedule and prompt already decided so they don't need to be re-derived
-or re-negotiated each time.
-
-Nothing here is bound to one company or repo. By default it resolves the repo
-from the current git remote / `gh repo view` (never a hardcoded org/repo
-slug); when the user names another repo, the prompt gains one leading
-paragraph that points the subagent at a clone of it (see **Targeting another
-repo**). It defers to whatever build/lint/test commands the repo itself
-documents (its CLAUDE.md/AGENTS.md/CONTRIBUTING.md, or its own CI config)
-rather than assuming a specific language or toolchain.
+Maintains a session-only `CronCreate` job that reviews open PRs on a repo that
+the current user did not author, one at a time, in an isolated worktree.
+`CronCreate` jobs die with the session, so this skill exists to re-arm one fast.
+The repo comes from the git remote, never a hardcoded slug. The gates come from
+whatever the repo itself documents.
 
 ## Standing schedule
-- Cadence: every 2 hours, only during work hours 9am–6pm PST (no overnight
-  runs) — cron expression `11 9-18/2 * * *`.
-- Use `CronCreate` directly with that exact cron expression. Do not route this
-  through the `/loop` skill's dynamic self-pacing mode — the cadence and quiet
-  hours here are fixed by explicit user instruction, not something to
-  re-derive per session.
-- Recurring jobs auto-expire after 7 days. When (re)starting, always run
-  `CronList` first and `CronDelete` any existing job whose prompt matches the
-  one below **for the same repo** before creating a new one, to avoid two
-  overlapping schedules. Jobs for different repos coexist.
+- `11 9-18/2 * * *` — every 2 hours, 9am–6pm local, nothing overnight.
+- Use `CronCreate` directly with that expression, `recurring: true`. Not `/loop`.
+- Jobs expire after 7 days. `CronList` first and `CronDelete` any existing job
+  for the same repo. Jobs for different repos coexist.
 
 ## The prompt
-Pass this exact prompt text as the job's `prompt`. Both the fired cron pass
-and a one-off "run now" invocation dispatch the body to an isolated
-subagent — never work directly in the invoking session, since that session
-may belong to, or be shared with, another in-progress task:
+Pass this text as the job's `prompt`, for a fired pass and for "run now" alike.
+Keep it short: every rule is one line, with no explanation attached. The
+reasons live in **Why** below, and never in the prompt.
 ```
-Do this entire task inside a subagent, not directly in this session: call the Agent tool with subagent_type "general-purpose" and isolation: "worktree", passing everything below this line as that subagent's prompt verbatim. Wait for it to finish, then relay just its final one-line summary. The isolation is required so this check never touches the invoking session's working directory, branch, or in-progress work, and never disturbs any other concurrent agent session on this machine.
+Do this entire task inside a subagent: the Agent tool, subagent_type "general-purpose", isolation: "worktree", passing everything below the line verbatim. Relay its one-line summary. Refuse if a pass on this repo is already running.
 
 ---
 
-Review every open PR on the current repo (resolve it from the current git remote / `gh repo view` — never assume a specific org/repo slug) EXCEPT my own — I cannot review my own work. Derive my login once, `ME=$(gh api user --jq .login)`, and filter by author EXCLUSION (`select(.author.login != $me)`), never by a named list of contributors: a new contributor's PR drops out of a named list silently, which is invisible in the output. Include drafts. Process one PR at a time, sequentially — do not run reviews in parallel.
+Review every open PR on the current repo except mine. Resolve the repo from the git remote.
 
-NEVER TOUCH A CLOSED PR. Take the open list from the live API at the moment you start, never from a list written down in this brief, in a handover note, or by an earlier pass: such a list goes stale in minutes. Read `state` and `merged_at` per PR and skip everything that is not open. A closed or merged PR gets nothing from you — no review, no comment, no verification, no marker.
+Derive my login with `gh api user --jq .login` and filter by author EXCLUSION. Never a named list.
 
-SKIP RULE, decided per PR from my own most recent MARKER. The marker can sit in a review body or in a plain issue comment, because minor notes go out through `gh pr comment` — read BOTH endpoints and merge them, or the rule finds no marker and re-reviews that PR from scratch on every pass. `gh api repos/OWNER/REPO/pulls/N/reviews --paginate --slurp | jq --arg me "$ME" 'add | [.[] | select(.user.login == $me)] | map({t: .submitted_at, state, body})'` and `gh api repos/OWNER/REPO/issues/N/comments --paginate --slurp | jq --arg me "$ME" 'add | [.[] | select(.user.login == $me)] | map({t: .created_at, state: "COMMENTED", body})'`. Take the newest entry of mine whose body holds a `<!-- reviewed-head: SHA -->` marker, and read the state from that same entry. On some `gh` builds `--slurp` is refused together with `--jq`, so pipe to standalone `jq` exactly as above. APPROVED and marker == current head: skip entirely, post nothing, do no verification. One exception: if the PR does not merge now, post only that. It does not matter whether it stopped merging since that review or the review missed it. COMMENTED and marker == head: stay silent unless something material changed outside the diff (left draft, became or stopped being mergeable, CI flipped) — then post only that. Otherwise review the delta since the marker, or the whole PR when there is no marker, and post. Use the self-written marker only — the API's `commit_id` and timestamps are not reliable for this. If every PR is skipped, say so in one line and do nothing else.
+List PRs from REST `pulls` (`.user.login`), not `gh pr list`. Include drafts. One PR at a time, oldest unreviewed first.
 
-REFRESH FIRST — never review a stale tree. `git fetch -q origin <default-branch>` and `git fetch -q --force origin pull/N/head:refs/pr/N`, then verify that `git rev-parse refs/pr/N` equals the head SHA the API reports; if it does not, re-read the live head with `gh api .../pulls/N --jq .head.sha` and fetch against that. Never use FETCH_HEAD. Never reference a bare local branch name such as `main` — use `origin/<branch>` or explicit SHAs. Build any per-PR worktree from the fetched SHA, never from a branch name.
+NEVER TOUCH A CLOSED PR. Re-read `state`, `merged_at` and the head SHA immediately before each post.
 
-CHECK THE BASE BRANCH: read `baseRefName`. If the base is another PR's branch, review the delta over that branch's head, say in the review body which SHA the delta was measured against, and note that the PR cannot land before its base does. If the branch is far behind the default branch or `mergeable` is false, reproduce it (`/usr/bin/git merge-tree --write-tree <head> <default-branch-sha>` where that git has it) and say which files conflict rather than reviewing the drift. If that comes back clean while the API says the branch does not merge, re-run it with `-c merge.renames=false`. GitHub's check does not follow renames. A file this PR renamed, and the default branch also edited, conflicts there but not locally. When the branch is behind the default branch, rebase it onto the latest default-branch SHA inside your own worktree and review the rebased result, so the review describes what will land rather than what the author last saw; say in the review body which SHA you rebased onto. If the rebase stops on a conflict, name the conflicting files, abort the rebase, and review the branch as it stands. Never push a rebase to the author's branch. Before calling anything inconsistent or premature, check the OTHER open PRs for the same names — one change is often split across two PRs, and each half read alone looks like a defect in the other; report that as a coordination note naming both SHAs, never as a defect in either.
+SKIP RULE: my newest `<!-- reviewed-head: SHA -->` marker, read from BOTH `pulls/N/reviews` and `issues/N/comments`. APPROVED at the current head: skip. COMMENTED or CHANGES_REQUESTED at the current head: silent unless draft, mergeable or CI flipped. Marker not an ancestor of the head: read the PR fresh.
 
-Verify by running, not by reading: the repo's own documented build/lint/test commands (its CLAUDE.md/AGENTS.md/CONTRIBUTING.md or CI config). A command that can fail to RUN needs its exit code asserted, not just its output grepped; an empty result is a claim — positive-control every negative. When a test suite is your evidence, say what you broke on purpose and which test caught it; a mutation that stays green is itself a finding. Where a document quotes the tree, confirm the quoted line still says that; where it names a file or API, confirm it exists.
+Never read `reviewDecision` as my position.
 
-DO NOT REPORT DEAD OR UNUSED CODE. No "this export has no consumer", no "nothing imports this file", no "this type/function/directory is unused", no "speculative API", no unused-import or `--noUnusedLocals` findings, no YAGNI objections to something that exists but is not yet called. Repos routinely land an API in one PR and its consumer in a later one, so absence of a consumer is the intended state, not a defect; if you catch yourself writing such a line, delete it. What remains reportable: code that is wrong; docs that misdescribe the tree (a quoted line that no longer says that, a named file or API that does not exist); an identifier whose name contradicts its own type after a rename; a broken gate; a missing regeneration; and a missing breaking-change declaration on a published break.
+An approval of mine left at an older head is urgent. Take that PR first.
 
-DO NOT COUNT THINGS. Do not count tests, files, lines, examples, rows or cases to check a number that a document, a changelog or the PR body states. Do not report that such a number is out of date, and do not print a tally you derived only to confirm that a sentence is right. These numbers move with almost every commit, and the author knows it. The count also costs a full test run or a walk of the tree, and it buys nothing. If a stale count is the only problem you found, the PR is fine. This rule covers numbers written in prose. A wrong length, index or bound in the code is still code that is wrong, and you report that. This rule also outranks any instruction to re-check a number from an earlier review: if an earlier review of mine stated a count, leave it alone — do not re-measure it, and do not post a correction to it. Correct an earlier review only when it named a defect that is not there, or missed one that is.
+To add a remark to a PR I approved, post a second APPROVING review. Never a comment.
 
-If everything is fine, approve with one or two sentences and nothing else: no headings, no table, no account of what you checked, no list of what you did not verify. Your verification earns the approval; it is not content for the author. **A FINDING GOES INLINE ON THE FILE AND LINE, NOT IN THE TOP-LEVEL BODY.** Post it as a review comment through the pull request `comments` API, giving `path`, `line`, `side` and the head `commit_id`, and read the text from a file. An inline comment sits beside the code in the Files view and closes when the author fixes it; a top-level body never closes and the author re-reads it on every visit. Shape every finding the same way: the first line is the action in the imperative, ten words or fewer; then at most 100 words that say what is wrong, what it costs, and the rule or the measurement behind it; then stop. Cite a line as a permalink pinned to the SHA, `https://github.com/OWNER/REPO/blob/<SHA>/<path>#L<a>-L<b>`, and never as a retyped quote or a bare line number. A pinned link cannot be mis-cited; retyped quotes and remembered line numbers are the two defects this loop posts most. The top-level body carries at most two sentences, or none at all. Never add a reaction prompt such as "Useful? React with thumbs up or down" — the user calls that noise. If the only action you found is already stated in an open thread by anyone, including a bot, post no body: set your position and say in your summary that the thread already covers it. Be very reasonable. Be very brief. Avoid AI slop at all costs. Say what you did not verify in your summary to me, never in the posted body. Immediately before you post, re-read the PR's `state`, its `merged_at` and its head SHA in a command of their own, then post in a separate command. If it closed or merged while you were reading it, post nothing and say so. If only the head moved, do not post against the old one — measure the delta first. End every review body with `<!-- reviewed-head: FULL_CURRENT_HEAD_SHA -->`. Never merge. You are already running inside an isolated worktree (the isolation: "worktree" Agent call that dispatched you) — do not create another nested worktree for the overall check, though you may still use `git worktree add` per-PR if you need to hold multiple PR branches checked out at once, and remove every worktree you create when done.
+Fetch `pull/N/head:refs/pr/N`, verify it against the API head, and build every worktree from a SHA.
+
+Read `baseRefName`. Review a stacked PR as a delta over its base head.
+
+`mergeable` false: reproduce with `/usr/bin/git merge-tree --write-tree` and name the conflicting files.
+
+Run the repo's own documented gates on the MERGE, not only the head. Assert every exit code. Measure the default branch alone too, and name its SHA.
+
+Pipe long runs through `tee` and read `${pipestatus[1]}`. Never background them.
+
+Mutate with the `Edit` tool only. Read the changed lines back.
+
+Say what you broke on purpose and which named test caught it. A mutation that stays green is a finding.
+
+Positive-control every negative. Never conclude from a grep cut with `head`.
+
+A skipped or queued CI job is not a pass.
+
+DO NOT REPORT DEAD OR UNUSED CODE.
+
+DO NOT COUNT THINGS.
+
+If everything is fine - simply approve. If something is wrong - leave a very short and focused comment on the code lines what is wrong exactly.
+
+Post a finding through the pull request `comments` API: `path`, `line`, `side`, head `commit_id`. First line imperative, ten words or fewer. 100 words maximum.
+
+Cite with a permalink pinned to the SHA. Never a retyped quote, never a line number.
+
+No headings, no tables, no account of what you checked, no "what I did not verify", no reaction prompt.
+
+Say nothing when an open thread already states the only action.
+
+Post as you go. Read each body by eye twice before the post command, never after.
+
+End every body with `<!-- reviewed-head: FULL_CURRENT_HEAD_SHA -->`, from command output.
+
+Never merge. Never request a human reviewer. Remove every worktree you create.
+
+Report to me: positions taken, findings, PRs not reached, gates never run, and whether the default branch is green.
 ```
-
-This clarity rule stems from a specific incident where a reviewer told the
-PR's author, directly, that a review buried the actual problem under
-supporting detail — "many words exist, but they are not communicating to me
-what exactly is wrong." The same failure mode applies to review comments this
-loop posts: a `gh pr comment`/`--request-changes` body that opens with
-rationale, a comparison table, or repo history before stating the defect
-leaves the author unable to tell what to fix. Lead with the defect, every
-time.
-
-The length rule has its own measurement, taken on 2026-10-11 after the
-maintainer said he was unhappy with how this loop comments. Eighty-seven
-drafted bodies had a median of 621 words and a maximum of 1514. One review of
-a two-file Markdown change ran 321 words over four headings, and its whole
-conclusion was "agreeing to this needs no code change". A 644-word review of
-PR 2828 carried exactly one action — delete a stale `todo/` file — and a bot
-had already asked for the same deletion an hour earlier, in about 100 words,
-inline on the line, under a one-line imperative title, citing the rule with a
-permalink pinned to the SHA. That comparison is the model: the bot's finding
-was shorter, anchored where the author works, and impossible to mis-cite.
-Everything this loop adds past the action — gate exit codes, mutation logs,
-tables of measured behaviour, the list of what went unrun — is evidence for
-the position it takes, and the author did not ask for it. It goes in the
-summary to the user.
-
-There is also a standing rule, not tied to one incident: review comments must
-read as plain English — no jargon the author has to look up, no "gotcha"
-framing that scores a point instead of describing a problem, no clever or
-rhetorical phrasing — and must be actionable, meaning the author can read the
-comment once and know exactly what change to make. A comment that is
-technically correct but requires the author to reverse-engineer what to do
-about it has failed this rule just as much as one that buries the defect.
-
-The `reviewed-head` marker, the author-exclusion filter and the dead-code
-prohibition come from a loop that ran hourly over one repo for two weeks.
-Each closed a failure that had actually happened: an approval re-posted on an
-unchanged head every hour; a named allowlist that silently dropped a new
-contributor's PRs; and an agent that reported a freshly landed type-level
-API as "unused" because its consumer was the next PR in the stack.
-
-The no-counting rule is a direct user instruction. A count that a document
-states drifts with every commit. A review that reports the drift spends a
-whole test run to tell the author something the author will not act on.
-
-The closed-PR rule has its own history. This queue moves faster than a review
-takes. Six PRs have merged before a pass reached them. One review went out five
-minutes after its PR had merged. Another PR merged one commit past the review
-just written for it. A stack of nine closed unmerged during a single pass. On
-2026-10-08 two merged PRs sat at the top of a start-here list, because the list
-came from a handover written four hours earlier. A list of PR numbers is never
-evidence that those PRs are open.
 
 ## Targeting another repo
-When the user names a repo other than the one the session is in (by slug,
-URL, or a local clone path), insert this paragraph as the first paragraph
-after the `---` line, filling in the path and URL, and leave the rest of the
-prompt verbatim:
+When the user names another repo, insert this as the first paragraph after the
+`---` line and leave the rest verbatim:
 ```
-This check targets <owner/repo>, not the repository your worktree was made from. Before anything else, `cd <clone-path>`; if that directory is missing, or `git rev-parse --git-dir` fails there, or `git remote get-url origin` fails there, `git clone -q <clone-url> <clone-path>` first, then `cd` into it. From there, "the current repo" below means the one that clone's `origin` names.
+This check targets <owner/repo>, not the repository your worktree was made from. First `cd <clone-path>`. If that directory is missing, or `git rev-parse --git-dir` or `git remote get-url origin` fails there, `rm -rf` it and `git clone -q <clone-url> <clone-path>`, then `cd` in. "The current repo" below means that clone's `origin`.
 ```
-Use a clone path outside any session scratchpad if one exists (a `/tmp`
-clone is reaped by age and the fired job then has to re-clone every time);
-the session scratchpad is acceptable when nothing else is available, because
-the paragraph re-clones on demand.
+Add one line per repo-specific fact the agent cannot derive, such as the node
+version the CI pins, a wrapper that breaks `cargo`, or a known gate gap on the
+default branch. One line each, no history.
+
+Prefer a clone path outside the session scratchpad; `/tmp` is reaped by age.
 
 ## Procedure
-1. `CronList` — check for an existing job with this same (or an earlier
-   variant of this) prompt **for the same repo**. If found, `CronDelete` it
-   first. A job for a different repo stays.
-2. `CronCreate` with `cron: "11 9-18/2 * * *"`, the prompt above (with the
-   targeting paragraph inserted if a repo was named), and `recurring: true`.
-3. Confirm to the user: the repo, the cadence (every 2 hours, 9am–6pm local,
-   nothing overnight), that it is session-only (lost on restart, which is
-   exactly why this skill exists), and the 7-day auto-expiry.
-4. If asked to run now: dispatch the prompt body to an
-   `isolation: "worktree"` subagent exactly as the cron would, and relay its
-   one-line summary.
-5. If asked to stop/cancel: `CronDelete` the job id.
-6. If asked for status: `CronList` and report each job id, its repo, cron
-   expression, and next-fire cadence.
-
-## Review workflow the loop follows once it fires
-(Context for reporting what happened, or diagnosing a firing that went wrong —
-not something to re-derive each time; it is already encoded in the standing
-prompt above, which the fired task follows on its own.)
-- List open PRs on the repo not authored by the current user, drafts included,
-  from the live API rather than from any list written down earlier. Skip every
-  PR that is not open: a closed or merged one gets nothing.
-- For each, find the current user's most recent `<!-- reviewed-head: SHA -->`
-  marker across BOTH the reviews API and the issue-comments API, and compare
-  it with the PR's current head. A marker written by `gh pr comment` is
-  invisible to the reviews API alone. Same head and APPROVED: skip. Same head and COMMENTED:
-  post only if something material changed outside the diff. Otherwise review
-  the delta since the marker. A bare `updatedAt` bump with no new commit is
-  not new work; a head that moved only by merging the default branch is a
-  delta whose own commits are empty — say so and refresh the marker.
-- Fetch the PR head into `refs/pr/N`, verify it against the API's head SHA,
-  and build the worktree from that SHA.
-- If the PR's base is another PR's branch, measure the delta over that base
-  and say which SHA it was measured against. If the branch conflicts with
-  the default branch, reproduce the conflict and name the files instead of
-  reviewing the drift. If the branch is behind the default branch, rebase it
-  onto the latest default-branch SHA locally and review the rebased result,
-  naming that SHA; never push the rebase to the author's branch.
-- Run whatever this repo's own documented format/lint/test commands are
-  before approving, asserting exit codes; for the change under review, break
-  something on purpose and record which test caught it.
-- Never report dead or unused code, and never count anything to check a
-  number a document states; the reportable classes are listed in the prompt.
-- Approve with one or two sentences and nothing else. No headings, no
-  table, no account of what was checked, no list of what was not verified.
-  Use `gh pr review --request-changes` only for a real problem.
-- Put every finding INLINE on its file and line, through the pull request
-  `comments` API with `path`, `line`, `side` and the head `commit_id`. An
-  inline comment closes when the author fixes it. A top-level body never
-  closes, so the author re-reads it on every visit.
-- Cap each finding at 100 words, with the first line the action in the
-  imperative, ten words or fewer. Cite a line as a permalink pinned to the
-  SHA, never as a retyped quote or a bare line number.
-- Write in plain English: no jargon the author has to look up, no "gotcha"
-  framing, no clever or rhetorical phrasing. Every comment must be
-  actionable — after reading it once, the author should know exactly what
-  to change, not have to infer it.
-- Post nothing when the only action you found is already stated in an open
-  thread, including by a bot. Set the position and say so in the summary.
-- Run every review body through the `af:writing-plainly` skill before
-  posting it, and post what comes back.
-- Re-read the PR's `state`, `merged_at` and head SHA immediately before
-  posting, each in its own command, and post nothing if it closed meanwhile.
-  End the body with the `reviewed-head` marker so the next firing can skip it.
-- Never merge an approved PR — per standing policy, leave that for a second
-  human reviewer other than the PR's own author to look at first.
-- Clean up every worktree (`git worktree remove --force`) and any branches
-  created for the check when done.
+1. `CronList`; `CronDelete` any job for the same repo.
+2. `CronCreate` with the cron expression, the prompt, `recurring: true`.
+3. Tell the user: repo, cadence, session-only, 7-day expiry.
+4. "Run now": dispatch the prompt body to an `isolation: "worktree"` subagent
+   and relay its one-line summary.
+5. "Stop": `CronDelete` the id. "Status": `CronList`.
 
 ## Example review output
-Two shapes, both measured against what the maintainer actually reads. An
-approval, posted as the whole body:
+An approval, as the whole body:
 ```
-Looks good to me. The new `conversion` proof does tell a `null` key from an
-`undefined` one: I changed the boxed key and `cov` exited 1 naming it.
+Looks good to me. I changed the boxed key and `cov` exited 1 naming the new
+`conversion` proof, so it does tell a `null` key from an `undefined` one.
 
 <!-- reviewed-head: 718e5ff0f0b6b102117e9ffa19ac8e202498e5cd -->
 ```
-A finding, posted inline on `spec/todo/README.md` at the line that claims the
-issue is done:
+A finding, inline on the line that claims the issue is done:
 ```
 Delete `fjs/compiler/todo/computed-property-key.md`.
 
 This branch makes `{ [a]: 5 }` compile, and that file still reads
-`**Status:** open` with every task unchecked. Two sources of truth now
-disagree, so the finished feature can be claimed again.
+`**Status:** open` with every task unchecked.
 [AGENTS.md L107-L112](https://github.com/OWNER/REPO/blob/718e5ff0/AGENTS.md#L107-L112)
 asks for the deletion.
 
 <!-- reviewed-head: 718e5ff0f0b6b102117e9ffa19ac8e202498e5cd -->
 ```
-What neither contains: a "Gates" section, a table of measurements, a
-"What I did not do" section, or a reaction prompt. Those belong in the
-summary to the user, not on the pull request.
+
+## Why
+Each rule replaced a failure that happened. Keep the reasons here.
+
+- **Short, inline findings.** 2026-10-11: the maintainer said he is unhappy
+  with these comments. 87 drafted bodies, median 621 words. A 644-word review
+  carried one action, which a bot had already posted an hour earlier in 100
+  words, inline, under an imperative title, citing the rule by permalink.
+  Everything past the action — gate codes, mutation logs, "what I did not
+  verify" — is evidence for the position, and belongs in the user's summary.
+- **Permalinks.** Retyped quotes and remembered line numbers are the two
+  defects this loop posts most.
+- **Short prompts.** Direct user instruction, same day: rules only, no
+  explanation. A long brief burns context and buries the rule.
+- **The marker, not `reviewDecision`.** GitHub keeps an approval alive after a
+  push and will not let a later COMMENTED review supersede it.
+- **Author exclusion.** A named allowlist silently dropped a new
+  contributor's first PR.
+- **No dead-code findings.** A repo lands an API in one PR and its consumer in
+  the next, so a missing consumer is the intended state.
+- **No counting.** A count a document states drifts with every commit, costs a
+  full run to check, and the author will not act on it.
+- **Closed PRs.** Seven merged before a pass reached them; one review landed
+  five minutes after its PR merged. A list of PR numbers is never evidence
+  that those PRs are open.
 
 ## Notes
-- Always dispatch the actual work to an isolated (`isolation: "worktree"`)
-  subagent, per the first line of the standing prompt — never run the checks
-  directly in whatever session picks up the fired cron task. This keeps the
-  loop from mutating the invoking session's cwd/branch or interfering with
-  any other agent session running concurrently on the same machine.
-- Two jobs for two repos are the normal shape when the session sits in one
-  repo and babysits another as well; the prompts differ only in the
-  targeting paragraph.
+- Always dispatch to an `isolation: "worktree"` subagent, never the invoking
+  session.
+- Two repos means two jobs, differing only in the targeting paragraph.
