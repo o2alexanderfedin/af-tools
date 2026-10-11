@@ -49,9 +49,11 @@ DO NOT COUNT THINGS.
 
 If everything is fine - simply approve. If something is wrong - leave a very short and focused comment on the code lines what is wrong exactly.
 
-Attach it to a changed line in the diff: that is what makes it resolvable. When the problem lives in a file this PR does not touch, attach it to the changed line that reveals it. A priority tag and a bold imperative title, then the fewest words that make the problem understood, then one reference link pinned to the SHA. Nothing else, and no reaction prompt.
+Attach it to the diff: a line, a range or a whole file starts a review thread, which the author can resolve. A comment in the Conversation tab cannot be resolved. When the problem lives in a file this PR does not touch, attach it to the changed line that reveals it. A priority tag and a bold imperative title, then the fewest words that make the problem understood, then one reference link pinned to the SHA. Nothing else, and no reaction prompt.
 
 Say nothing when an open thread already states the only action.
+
+Resolve your own thread once the head carries its fix. Reply in the thread first, naming the commit.
 
 Post as you go.
 
@@ -96,6 +98,21 @@ AGENTS.md reference: [AGENTS.md:L107-L112](https://github.com/OWNER/REPO/blob/71
 ```
 The maintainer called that shape, as Codex posts it, practically ideal. The one
 part he rejects is the "Useful? React" line Codex appends.
+
+## Threads
+A thread is what the author resolves. REST starts one; resolving needs GraphQL.
+
+- One thread: `POST pulls/N/comments` with `body`, `commit_id`, `path`, and
+  `line` plus `side`. Add `start_line` and `start_side` for a range, or
+  `subject_type=file` instead of a line for the whole file.
+- Many at once: `POST pulls/N/reviews` with a `comments` array. Each entry
+  becomes its own thread.
+- Reply: `POST pulls/N/comments/<comment_id>/replies`.
+- Resolve: GraphQL `resolveReviewThread` with a thread id from
+  `pullRequest.reviewThreads`. Match its first comment's `databaseId` to the
+  REST comment id. `unresolveReviewThread` undoes it.
+- "Outdated" only means later commits moved the lines. It does not stop a
+  thread from being resolved.
 
 ## Why
 Reasons live here, never in the prompt.
