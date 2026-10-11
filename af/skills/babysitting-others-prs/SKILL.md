@@ -49,15 +49,13 @@ DO NOT COUNT THINGS.
 
 If everything is fine - simply approve. If something is wrong - leave a very short and focused comment on the code lines what is wrong exactly.
 
-Attach it to the diff: a line, a range or a whole file starts a review thread, which the author can resolve. A comment in the Conversation tab cannot be resolved. When the problem lives in a file this PR does not touch, attach it to the changed line that reveals it. A priority tag and a bold imperative title, then the fewest words that make the problem understood, then one reference link pinned to the SHA. Nothing else, and no reaction prompt.
+Attach it to the diff with `scripts/pr-thread.sh`: a thread is what the author can resolve, and a Conversation-tab comment cannot be. When the problem lives in a file this PR does not touch, attach it to the changed line that reveals it. Post an approval with `scripts/pr-review.sh`. Both refuse a closed PR and append the marker, so do not write the marker yourself. A priority tag and a bold imperative title, then the fewest words that make the problem understood, then one reference link pinned to the SHA. Nothing else, and no reaction prompt.
 
 Say nothing when an open thread already states the only action.
 
-Resolve your own thread once the head carries its fix. Reply in the thread first, naming the commit.
+Resolve your own thread once the head carries its fix: `scripts/pr-threads.sh` lists them, `scripts/pr-reply.sh` names the commit, `scripts/pr-resolve.sh` closes it.
 
 Post as you go.
-
-End every body with `<!-- reviewed-head: FULL_CURRENT_HEAD_SHA -->`.
 
 Never merge. Never request a human reviewer.
 
@@ -99,20 +97,24 @@ AGENTS.md reference: [AGENTS.md:L107-L112](https://github.com/OWNER/REPO/blob/71
 The maintainer called that shape, as Codex posts it, practically ideal. The one
 part he rejects is the "Useful? React" line Codex appends.
 
-## Threads
-A thread is what the author resolves. REST starts one; resolving needs GraphQL.
+## Scripts
+In `scripts/`, beside this file. They hold the API detail so the prompt does
+not have to, and they refuse a closed PR before they post.
 
-- One thread: `POST pulls/N/comments` with `body`, `commit_id`, `path`, and
-  `line` plus `side`. Add `start_line` and `start_side` for a range, or
-  `subject_type=file` instead of a line for the whole file.
-- Many at once: `POST pulls/N/reviews` with a `comments` array. Each entry
-  becomes its own thread.
-- Reply: `POST pulls/N/comments/<comment_id>/replies`.
-- Resolve: GraphQL `resolveReviewThread` with a thread id from
-  `pullRequest.reviewThreads`. Match its first comment's `databaseId` to the
-  REST comment id. `unresolveReviewThread` undoes it.
-- "Outdated" only means later commits moved the lines. It does not stop a
-  thread from being resolved.
+- `pr-head.sh REPO N` — the head SHA, exit 3 if the PR is not open.
+- `pr-thread.sh REPO N PATH LINE BODYFILE [START_LINE]` — start a thread on a
+  line or a range; pass `file` as LINE for a whole-file thread.
+- `pr-review.sh REPO N approve|comment|request-changes BODYFILE` — a
+  top-level review.
+- `pr-reply.sh REPO N COMMENT_ID BODYFILE` — reply inside a thread.
+- `pr-threads.sh REPO N [LOGIN]` — list threads: comment id, resolved,
+  outdated, path, author, first line.
+- `pr-resolve.sh [-u] REPO N COMMENT_ID` — resolve, or unresolve.
+
+`pr-thread.sh` and `pr-review.sh` append the `reviewed-head` marker from the
+SHA they just read, which is why no body carries a hand-written one. Resolving
+is GraphQL; everything else is REST. "Outdated" only means later commits moved
+the lines, and does not stop a thread from being resolved.
 
 ## Why
 Reasons live here, never in the prompt.
