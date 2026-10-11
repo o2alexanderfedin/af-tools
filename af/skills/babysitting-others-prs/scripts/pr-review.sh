@@ -1,10 +1,15 @@
 #!/bin/sh
 # Post a top-level review. Appends the reviewed-head marker. Refuses a closed PR.
-# usage: pr-review.sh OWNER/REPO N approve|comment|request-changes BODYFILE
+# usage: pr-review.sh OWNER/REPO N approve|comment|request-changes BODYFILE MEASURED_SHA
+# Exit 5 if the head moved since MEASURED_SHA: re-measure, do not post.
 set -eu
 dir=$(dirname "$0")
-repo=$1; pr=$2; event=$3; bodyfile=$4
+repo=$1; pr=$2; event=$3; bodyfile=$4; measured=$5
 sha=$("$dir/pr-head.sh" "$repo" "$pr")
+if [ "$sha" != "$measured" ]; then
+  echo "pr-review: head moved, $measured -> $sha; re-measure before posting" >&2
+  exit 5
+fi
 case "$event" in
   approve) ev=APPROVE ;;
   comment) ev=COMMENT ;;

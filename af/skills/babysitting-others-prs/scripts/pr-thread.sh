@@ -1,11 +1,16 @@
 #!/bin/sh
 # Start a resolvable review thread on the diff. Appends the reviewed-head marker.
-# usage: pr-thread.sh OWNER/REPO N PATH LINE BODYFILE [START_LINE]
-#        pr-thread.sh OWNER/REPO N PATH file BODYFILE
+# usage: pr-thread.sh OWNER/REPO N PATH LINE BODYFILE MEASURED_SHA [START_LINE]
+#        pr-thread.sh OWNER/REPO N PATH file BODYFILE MEASURED_SHA
+# Exit 5 if the head moved since MEASURED_SHA: re-measure, do not post.
 set -eu
 dir=$(dirname "$0")
-repo=$1; pr=$2; path=$3; line=$4; bodyfile=$5; start=${6:-}
+repo=$1; pr=$2; path=$3; line=$4; bodyfile=$5; measured=$6; start=${7:-}
 sha=$("$dir/pr-head.sh" "$repo" "$pr")
+if [ "$sha" != "$measured" ]; then
+  echo "pr-thread: head moved, $measured -> $sha; re-measure before posting" >&2
+  exit 5
+fi
 tmp=$(mktemp)
 { cat "$bodyfile"; printf '\n\n<!-- reviewed-head: %s -->\n' "$sha"; } > "$tmp"
 if [ "$line" = file ]; then
