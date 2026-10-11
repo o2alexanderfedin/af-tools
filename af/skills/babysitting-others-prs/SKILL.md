@@ -49,7 +49,7 @@ DO NOT COUNT THINGS.
 
 If everything is fine - simply approve. If something is wrong - leave a very short and focused comment on the code lines what is wrong exactly.
 
-Attach it to the diff with `scripts/pr-thread.sh`: a thread is what the author can resolve, and a Conversation-tab comment cannot be. When the problem lives in a file this PR does not touch, attach it to the changed line that reveals it. Post an approval with `scripts/pr-review.sh`. Both refuse a closed PR and append the marker, so do not write the marker yourself. A priority tag and a bold imperative title, then the fewest words that make the problem understood, then one reference link pinned to the SHA. Nothing else, and no reaction prompt.
+Attach it to the diff with `scripts/pr-thread.sh`: a thread is what the author can resolve, and a Conversation-tab comment cannot be. When the problem lives in a file this PR does not touch, attach it to the changed line that reveals it. Post an approval with `scripts/pr-review.sh`. Both take the SHA you measured, refuse a closed PR or a moved head, and append the marker, so do not write the marker yourself. A priority tag and a bold imperative title, then the fewest words that make the problem understood, then one reference link pinned to the SHA. Nothing else, and no reaction prompt.
 
 Say nothing when an open thread already states the only action.
 
@@ -102,17 +102,19 @@ In `scripts/`, beside this file. They hold the API detail so the prompt does
 not have to, and they refuse a closed PR before they post.
 
 - `pr-head.sh REPO N` — the head SHA, exit 3 if the PR is not open.
-- `pr-thread.sh REPO N PATH LINE BODYFILE [START_LINE]` — start a thread on a
-  line or a range; pass `file` as LINE for a whole-file thread.
-- `pr-review.sh REPO N approve|comment|request-changes BODYFILE` — a
-  top-level review.
+- `pr-thread.sh REPO N PATH LINE BODYFILE MEASURED_SHA [START_LINE]` — start a
+  thread on a line or a range; pass `file` as LINE for a whole-file thread.
+- `pr-review.sh REPO N approve|comment|request-changes BODYFILE MEASURED_SHA` —
+  a top-level review.
 - `pr-reply.sh REPO N COMMENT_ID BODYFILE` — reply inside a thread.
 - `pr-threads.sh REPO N [LOGIN]` — list threads: comment id, resolved,
   outdated, path, author, first line.
 - `pr-resolve.sh [-u] REPO N COMMENT_ID` — resolve, or unresolve.
 
-`pr-thread.sh` and `pr-review.sh` append the `reviewed-head` marker from the
-SHA they just read, which is why no body carries a hand-written one. Resolving
+`pr-thread.sh` and `pr-review.sh` take the SHA you measured, refuse with exit 5
+if the live head has moved past it, and append the marker themselves. So a
+body can never carry a marker for a head it did not measure, and no body
+carries a hand-written one. Resolving
 is GraphQL; everything else is REST. "Outdated" only means later commits moved
 the lines, and does not stop a thread from being resolved.
 
