@@ -49,7 +49,7 @@ DO NOT COUNT THINGS.
 
 If everything is fine - simply approve. If something is wrong - leave a very short and focused comment on the code lines what is wrong exactly.
 
-Anchor it to the changed lines. A priority tag and a bold imperative title, one paragraph, one reference link pinned to the SHA. Nothing else, and no reaction prompt.
+Anchor it to the changed lines. A priority tag and a bold imperative title, then the fewest words that make the problem understood, then one reference link pinned to the SHA. Nothing else, and no reaction prompt.
 
 Say nothing when an open thread already states the only action.
 
