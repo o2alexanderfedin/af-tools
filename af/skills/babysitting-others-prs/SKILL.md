@@ -49,7 +49,7 @@ DO NOT COUNT THINGS.
 
 If everything is fine - simply approve. If something is wrong - leave a very short and focused comment on the code lines what is wrong exactly.
 
-Anchor it to the changed lines. A priority tag and a bold imperative title, then the fewest words that make the problem understood, then one reference link pinned to the SHA. Nothing else, and no reaction prompt.
+Attach it to a changed line in the diff: that is what makes it resolvable. When the problem lives in a file this PR does not touch, attach it to the changed line that reveals it. A priority tag and a bold imperative title, then the fewest words that make the problem understood, then one reference link pinned to the SHA. Nothing else, and no reaction prompt.
 
 Say nothing when an open thread already states the only action.
 
@@ -79,7 +79,7 @@ Looks good to me. I changed the boxed key and `cov` exited 1 naming the new
 
 <!-- reviewed-head: 718e5ff0f0b6b102117e9ffa19ac8e202498e5cd -->
 ```
-A finding, inline on the changed lines:
+A finding, attached to the changed line that reveals it, about a file this PR does not touch:
 ```
 **P2 Remove the completed computed-key issue**
 
