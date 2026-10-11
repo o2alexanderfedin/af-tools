@@ -49,7 +49,7 @@ DO NOT COUNT THINGS.
 
 If everything is fine - simply approve. If something is wrong - leave a very short and focused comment on the code lines what is wrong exactly.
 
-100 words maximum, first line imperative, cited with a permalink pinned to the SHA. No headings, no tables, no evidence.
+Anchor it to the changed lines. A priority tag and a bold imperative title, one paragraph, one reference link pinned to the SHA. Nothing else, and no reaction prompt.
 
 Say nothing when an open thread already states the only action.
 
@@ -79,17 +79,23 @@ Looks good to me. I changed the boxed key and `cov` exited 1 naming the new
 
 <!-- reviewed-head: 718e5ff0f0b6b102117e9ffa19ac8e202498e5cd -->
 ```
-A finding, inline on the line that claims the issue is done:
+A finding, inline on the changed lines:
 ```
-Delete `fjs/compiler/todo/computed-property-key.md`.
+**P2 Remove the completed computed-key issue**
 
-This branch makes `{ [a]: 5 }` compile, and that file still reads
-`**Status:** open` with every task unchecked.
-[AGENTS.md L107-L112](https://github.com/OWNER/REPO/blob/718e5ff0/AGENTS.md#L107-L112)
-asks for the deletion.
+The roadmap now marks computed property keys complete, but
+`fjs/compiler/todo/computed-property-key.md` remains open and still says the
+compiler refuses `{ [a]: 5 }`, with every implementation task unchecked. This
+leaves two contradictory sources of truth and invites the already-finished
+feature to be claimed again; the repository explicitly requires deleting the
+`todo/` file fixed by a PR.
+
+AGENTS.md reference: [AGENTS.md:L107-L112](https://github.com/OWNER/REPO/blob/718e5ff0/AGENTS.md#L107-L112)
 
 <!-- reviewed-head: 718e5ff0f0b6b102117e9ffa19ac8e202498e5cd -->
 ```
+The maintainer called that shape, as Codex posts it, practically ideal. The one
+part he rejects is the "Useful? React" line Codex appends.
 
 ## Why
 Reasons live here, never in the prompt.
