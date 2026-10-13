@@ -35,7 +35,9 @@ Review a stacked PR as a delta over its base head, and say so.
 
 Run the repo's own gates on the MERGE, not only the head. Measure the default branch too.
 
-A watchdog kills 600 seconds of silence.
+A watchdog kills 600 seconds of silence. Stream every long run through `tee`; a pipe into `tail` or `head` buffers the whole thing and the watchdog sees nothing.
+
+Never wait for CI by polling until no check is in progress: a check run can stay `in_progress` for ever. Cap every wait loop.
 
 Say what you broke on purpose and which named test caught it. A mutation that stays green is a finding.
 
