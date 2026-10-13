@@ -25,7 +25,7 @@ Review every open PR on the current repo except mine, drafts included, one at a 
 
 NEVER TOUCH A CLOSED PR.
 
-My position is my newest `<!-- reviewed-head: SHA -->` marker, in a review or a plain comment, never `reviewDecision`. Skip a PR I approved at its current head.
+My position is my newest review or comment THAT CARRIES a `<!-- reviewed-head: SHA -->` marker, never `reviewDecision` and never simply the last review: a reply creates a markerless review object that would shadow it. Skip a PR I approved at its current head.
 
 An approval of mine left at an older head is urgent.
 
@@ -106,7 +106,9 @@ not have to, and they refuse a closed PR before they post.
   thread on a line or a range; pass `file` as LINE for a whole-file thread.
 - `pr-review.sh REPO N approve|comment|request-changes BODYFILE MEASURED_SHA` —
   a top-level review.
-- `pr-reply.sh REPO N COMMENT_ID BODYFILE` — reply inside a thread.
+- `pr-reply.sh REPO N COMMENT_ID BODYFILE` — reply inside a thread. It creates
+  a markerless review object, so a sweep must take the newest entry that has a
+  marker, not the last one.
 - `pr-threads.sh REPO N [LOGIN]` — list threads: comment id, resolved,
   outdated, path, author, first line.
 - `pr-resolve.sh [-u] REPO N COMMENT_ID` — resolve, or unresolve.
